@@ -1,7 +1,6 @@
 import type { PvMinutePoint } from "@/types/energy";
 
-const MINUTES_PER_DAY = 24 * 60;
-const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
 const PVGIS_TIMEOUT_MS = 12000;
 
 type PvgisHourlyPoint = {
@@ -41,8 +40,8 @@ function toFiniteNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function buildTimestamp(start: Date, minuteIndex: number) {
-  return new Date(start.getTime() + minuteIndex * 60_000).toISOString();
+function buildTimestamp(start: Date, hourIndex: number) {
+  return new Date(start.getTime() + hourIndex * 60 * 60 * 1000).toISOString();
 }
 
 export async function generatePvgisPvProfile(
@@ -87,16 +86,16 @@ export async function generatePvgisPvProfile(
     }
 
     const days = input.days ?? 365;
-    const totalMinutes = Math.round(days * MINUTES_PER_DAY);
+    const totalHours = Math.round(days * HOURS_PER_DAY);
     const start = new Date(input.startDate ?? "2025-01-01T00:00:00.000Z");
 
-    return Array.from({ length: totalMinutes }, (_, minuteIndex) => {
-      const hourIndex = Math.floor(minuteIndex / MINUTES_PER_HOUR) % hourly.length;
-      const hourlyPowerW = Math.max(0, toFiniteNumber(hourly[hourIndex]?.P));
+    return Array.from({ length: totalHours }, (_, hourIndex) => {
+      const sourceIndex = hourIndex % hourly.length;
+      const hourlyPowerW = Math.max(0, toFiniteNumber(hourly[sourceIndex]?.P));
 
       return {
-        timestamp: buildTimestamp(start, minuteIndex),
-        productionKwh: hourlyPowerW / 1000 / MINUTES_PER_HOUR,
+        timestamp: buildTimestamp(start, hourIndex),
+        productionKwh: hourlyPowerW / 1000,
         source: "pvgis",
         originalResolutionMinutes: 60,
         pvKwp: input.pvKwp,
@@ -112,15 +111,18 @@ export function scalePvgisReferenceProfile(params: {
   pvKwp: number;
   days: number;
 }): PvMinutePoint[] {
-  const totalMinutes = Math.round(params.days * MINUTES_PER_DAY);
+  const totalHours = Math.round(params.days * HOURS_PER_DAY);
+  const start = new Date("2025-01-01T00:00:00.000Z");
 
-  return Array.from({ length: totalMinutes }, (_, minuteIndex) => {
+  return Array.from({ length: totalHours }, (_, hourIndex) => {
     const referencePoint =
-      params.referenceProfile[minuteIndex % params.referenceProfile.length];
+      params.referenceProfile[hourIndex % params.referenceProfile.length];
 
     return {
       ...referencePoint,
+      timestamp: buildTimestamp(start, hourIndex),
       productionKwh: referencePoint.productionKwh * params.pvKwp,
+      originalResolutionMinutes: 60,
       pvKwp: params.pvKwp,
     };
   });

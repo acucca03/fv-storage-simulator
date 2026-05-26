@@ -1,4 +1,4 @@
-﻿import { defaultAdvancedEngineConfig } from "./advanced-config";
+import { defaultAdvancedEngineConfig } from "./advanced-config";
 import type {
   AdvancedBatteryComparison,
   AdvancedEconomicAssumptions,
@@ -41,17 +41,6 @@ function mergeConfig(
 
 function estimateDaysFromProfileLength(length: number, resolutionMinutes = 60) {
   return Math.max(1, (length * resolutionMinutes) / 1440);
-}
-
-function getStepHours(index: number, timestamps: string[], fallbackHours: number) {
-  const current = new Date(timestamps[index]).getTime();
-  const next = new Date(timestamps[index + 1]).getTime();
-
-  if (Number.isFinite(current) && Number.isFinite(next) && next > current) {
-    return (next - current) / 3_600_000;
-  }
-
-  return fallbackHours;
 }
 
 function pickCostFromThresholdTable(size: number, table: CostPoint[]) {
@@ -97,10 +86,6 @@ function simulateAdvancedEnergy(
   const pvProfile = input.pvProfileFactory(pvKwp, days);
 
   const steps = Math.min(input.consumptionProfile.length, pvProfile.length);
-  const timestamps = input.consumptionProfile
-    .slice(0, steps)
-    .map((point) => point.timestamp);
-
   const fallbackStepHours =
     input.consumptionProfile[0]?.originalResolutionMinutes !== undefined
       ? input.consumptionProfile[0].originalResolutionMinutes / 60
@@ -130,7 +115,7 @@ function simulateAdvancedEnergy(
   const initialSoc = soc;
 
   for (let index = 0; index < steps; index += 1) {
-    const stepHours = getStepHours(index, timestamps, fallbackStepHours);
+    const stepHours = fallbackStepHours;
 
     const consumptionKwh = Math.max(
       0,

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState, type ChangeEvent } from "react";
 import type {
@@ -969,7 +969,7 @@ function ResultsPanel(props: {
 
           <div className="rounded-[1.25rem] bg-white/10 p-4 backdrop-blur">
             <div className="text-sm font-semibold text-white/70">
-              LocalitÃ  e fonte dati
+              Località e fonte dati
             </div>
             <div className="mt-2 text-2xl font-bold">
               {props.address?.trim() ? props.address : "Indirizzo inserito"}
@@ -1097,7 +1097,7 @@ function ResultsPanel(props: {
                 <strong className="text-[#1f4d3a]">
                   {formatKwh(specificYield)} kWh/kWp
                 </strong>
-                . {props.pvDataSource?.source === "pvgis" ? "Questo dato deriva dalla serie oraria PVGIS scalata sulla taglia scelta." : "Questo dato sarÃ  più preciso quando saranno caricati consumi reali."}
+                . {props.pvDataSource?.source === "pvgis" ? "Questo dato deriva dalla serie oraria PVGIS scalata sulla taglia scelta." : "Questo dato sarà più preciso quando saranno caricati consumi reali."}
               </p>
             </div>
           </article>
@@ -1258,7 +1258,7 @@ function LocationSearchInput({
 
     if (query.length < 3) {
       setResults([]);
-      setSearchError("Scrivi almeno 3 caratteri, meglio cittÃ  + nazione.");
+      setSearchError("Scrivi almeno 3 caratteri, meglio città + nazione.");
       return;
     }
 
@@ -1273,7 +1273,7 @@ function LocationSearchInput({
       };
 
       if (!response.ok) {
-        throw new Error(data.message ?? "Ricerca localitÃ  non riuscita.");
+        throw new Error(data.message ?? "Ricerca località non riuscita.");
       }
 
       const foundResults = data.results ?? [];
@@ -1281,7 +1281,7 @@ function LocationSearchInput({
 
       if (!foundResults.length) {
         setSearchError(
-          "Nessuna localitÃ  trovata. Prova con cittÃ  + nazione, ad esempio “Cagliari, Italia”.",
+          "Nessuna località trovata. Prova con città + nazione, ad esempio “Cagliari, Italia”.",
         );
       }
     } catch (error) {
@@ -1289,7 +1289,7 @@ function LocationSearchInput({
       setSearchError(
         error instanceof Error
           ? error.message
-          : "Impossibile cercare la localitÃ .",
+          : "Impossibile cercare la località.",
       );
     } finally {
       setIsSearching(false);
@@ -1335,18 +1335,18 @@ function LocationSearchInput({
           disabled={isSearching || value.trim().length < 3}
           className="rounded-full bg-[#1f4d3a] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#173b2c] disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {isSearching ? "Cerco..." : "Cerca localitÃ "}
+          {isSearching ? "Cerco..." : "Cerca località"}
         </button>
       </div>
 
       <p className="mt-3 text-sm leading-6 text-[#52615d]">
-        Scrivi cittÃ  e nazione, poi scegli il risultato corretto. Esempi:
-        “Cagliari, Italia”, “Utsjoki, Finlandia”, “Madrid, Spagna”.
+        Scrivi città e nazione, poi scegli il risultato corretto. Esempi:
+        “Cagliari, Italia”, “Utsjoki, Finlandia”, “Madrid, Spagna”.
       </p>
 
       {selectedLocation ? (
         <div className="mt-3 rounded-2xl bg-[#eef5ef] px-4 py-3 text-sm leading-6 text-[#1f4d3a]">
-          <strong>LocalitÃ  selezionata:</strong> {selectedLocation.displayName}
+          <strong>Località selezionata:</strong> {selectedLocation.displayName}
           <br />
           Coordinate usate: {selectedLocation.latitude.toFixed(4)},{" "}
           {selectedLocation.longitude.toFixed(4)}
@@ -1552,14 +1552,14 @@ export function SimulatorWizard() {
 
               <div className="flex flex-col justify-center p-4 sm:p-5 md:p-6">
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl bg-[#eef5ef] text-lg">
-                  ðŸ“„
+                  📄
                 </div>
                 <h2 className="text-xl font-semibold sm:text-2xl">
                   Ho i file dei consumi reali
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#52615d]">
-                  Il sistema riconoscerÃ  formato, colonne, unitÃ  e risoluzione
-                  temporale. Poi convertirÃ  i dati in una curva energetica
+                  Il sistema riconoscerà formato, colonne, unità e risoluzione
+                  temporale. Poi convertirà i dati in una curva energetica
                   utilizzabile per la simulazione.
                 </p>
               </div>
@@ -1588,7 +1588,7 @@ export function SimulatorWizard() {
 
               <div className="flex flex-col justify-center p-4 sm:p-5 md:p-6">
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl bg-[#fff7d7] text-lg">
-                  âš¡
+                  ⚡
                 </div>
                 <h2 className="text-xl font-semibold sm:text-2xl">
                   Non ho file, conosco il consumo annuo
@@ -1642,7 +1642,7 @@ export function SimulatorWizard() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef5ef] text-2xl">
-                      ðŸ“„
+                      📄
                     </div>
                     <div>
                       <div className="font-semibold text-[#1f2933]">
@@ -1719,21 +1719,21 @@ export function SimulatorWizard() {
                         </div>
                         <div className="mt-5 grid gap-3">
                           <div className="rounded-2xl border border-[#e5ece7] p-4">
-                            <div className="text-2xl">ðŸ”</div>
+                            <div className="text-2xl">🔐</div>
                             <div className="mt-2 font-semibold text-[#1f2933]">Accesso SPID</div>
                             <p className="mt-1 text-sm leading-6 text-[#52615d]">
                               Entra nell’area privata del portale.
                             </p>
                           </div>
                           <div className="rounded-2xl border border-[#e5ece7] p-4">
-                            <div className="text-2xl">ðŸ </div>
+                            <div className="text-2xl">🏠</div>
                             <div className="mt-2 font-semibold text-[#1f2933]">Utenza luce</div>
                             <p className="mt-1 text-sm leading-6 text-[#52615d]">
                               Seleziona la fornitura elettrica corretta.
                             </p>
                           </div>
                           <div className="rounded-2xl border border-[#e5ece7] p-4">
-                            <div className="text-2xl">ðŸ“Š</div>
+                            <div className="text-2xl">📊</div>
                             <div className="mt-2 font-semibold text-[#1f2933]">Letture e consumi</div>
                             <p className="mt-1 text-sm leading-6 text-[#52615d]">
                               Scarica il file con le misure disponibili.
@@ -1743,7 +1743,7 @@ export function SimulatorWizard() {
 
                         <p className="mt-4 rounded-2xl bg-[#f7f4ec] p-4 text-xs leading-6 text-[#52615d]">
                           Nota: il nome delle sezioni può cambiare leggermente nel tempo.
-                          Cerca voci come “letture”, “consumi”, “misure” o “storico consumi”.
+                          Cerca voci come “letture”, “consumi”, “misure” o “storico consumi”.
                         </p>
                       </div>
                     </div>
@@ -1814,7 +1814,7 @@ export function SimulatorWizard() {
 
               <div className="mt-4">
                 <LocationSearchInput
-                  label="Indirizzo abitazione / localitÃ  impianto"
+                  label="Indirizzo abitazione / località impianto"
                   value={address}
                   onChange={setAddress}
                   selectedLocation={selectedLocation}
@@ -1875,7 +1875,7 @@ export function SimulatorWizard() {
 
               <div className="mt-4">
                 <LocationSearchInput
-                  label="Indirizzo abitazione / localitÃ  impianto"
+                  label="Indirizzo abitazione / località impianto"
                   value={address}
                   onChange={setAddress}
                   selectedLocation={selectedLocation}

@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { generateStatisticalConsumptionProfile } from "@/lib/energy/consumption/generate-statistical-profile";
 import { normalizeUploadedConsumptionProfile } from "@/lib/energy/consumption/normalize-uploaded-consumption-profile";
 import { generateMockPvProfile } from "@/lib/energy/pv/generate-mock-pv-profile";
@@ -65,6 +65,8 @@ type ConsumptionDataSourceResponse = {
   note?: string;
 };
 
+const pvgisReferenceProfileCache = new Map<string, PvMinutePoint[]>();
+
 
 
 function isValidSelectedLocation(
@@ -123,12 +125,21 @@ async function createPvProfileFactory(
       };
     }
 
-    const referenceProfile = await generatePvgisPvProfile({
-      latitude: geocoding.latitude,
-      longitude: geocoding.longitude,
-      pvKwp: 1,
-      days: 365,
-    });
+    const profileCacheKey =
+      geocoding.latitude.toFixed(4) + ":" + geocoding.longitude.toFixed(4);
+
+    let referenceProfile = pvgisReferenceProfileCache.get(profileCacheKey);
+
+    if (!referenceProfile) {
+      referenceProfile = await generatePvgisPvProfile({
+        latitude: geocoding.latitude,
+        longitude: geocoding.longitude,
+        pvKwp: 1,
+        days: 365,
+      });
+
+      pvgisReferenceProfileCache.set(profileCacheKey, referenceProfile);
+    }
 
     return {
       pvProfileFactory: (pvKwp: number, days: number) =>
@@ -317,8 +328,23 @@ export async function POST(request: NextRequest) {
           days,
         });
 
-  const optimizationPvProfileFactory = (pvKwp: number, days: number) =>
-    aggregatePvProfileByResolution(getPvProfile(pvKwp, days), 60);
+  const pvProfileCache = new Map<string, PvMinutePoint[]>();
+
+  const optimizationPvProfileFactory = (pvKwp: number, days: number) => {
+    const key = pvKwp + ":" + days;
+    const cached = pvProfileCache.get(key);
+
+    if (cached) return cached;
+
+    const profile = getPvProfile(pvKwp, days);
+    const preparedProfile =
+      profile[0]?.originalResolutionMinutes === 60
+        ? profile
+        : aggregatePvProfileByResolution(profile, 60);
+
+    pvProfileCache.set(key, preparedProfile);
+    return preparedProfile;
+  };
 
   const advanced = runAdvancedOptimization({
     consumptionProfile: reportConsumptionProfile,

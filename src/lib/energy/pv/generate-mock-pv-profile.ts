@@ -1,6 +1,6 @@
 import type { PvMinutePoint, PvProfileInput } from "@/types/energy";
 
-const MINUTES_PER_DAY = 24 * 60;
+const HOURS_PER_DAY = 24;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -25,26 +25,24 @@ function getMonthlyYieldFactor(month: number) {
 export function generateMockPvProfile(input: PvProfileInput): PvMinutePoint[] {
   const days = input.days ?? 365;
   const start = new Date(input.startDate ?? "2025-01-01T00:00:00.000Z");
-  const totalMinutes = days * MINUTES_PER_DAY;
+  const totalHours = Math.round(days * HOURS_PER_DAY);
   const annualSpecificYield = input.annualSpecificYieldKwhPerKwp ?? 1450;
   const annualProductionKwh = input.pvKwp * annualSpecificYield;
 
-  const rawWeights = Array.from({ length: totalMinutes }, (_, minuteIndex) => {
-    const timestamp = new Date(start.getTime() + minuteIndex * 60_000);
-    const hour = timestamp.getUTCHours() + timestamp.getUTCMinutes() / 60;
+  const rawWeights = Array.from({ length: totalHours }, (_, hourIndex) => {
+    const timestamp = new Date(start.getTime() + hourIndex * 60 * 60 * 1000);
+    const hour = timestamp.getUTCHours() + 0.5;
     const month = timestamp.getUTCMonth();
 
-    const daylightShape = getDaylightShape(hour, month);
-    const monthlyFactor = getMonthlyYieldFactor(month);
-
-    return daylightShape * monthlyFactor;
+    return getDaylightShape(hour, month) * getMonthlyYieldFactor(month);
   });
 
   const totalWeight = rawWeights.reduce((sum, value) => sum + value, 0);
-  const kwhPerWeightUnit = annualProductionKwh / totalWeight;
+  const kwhPerWeightUnit =
+    totalWeight > 0 ? annualProductionKwh / totalWeight : 0;
 
-  return rawWeights.map((weight, minuteIndex) => {
-    const timestamp = new Date(start.getTime() + minuteIndex * 60_000);
+  return rawWeights.map((weight, hourIndex) => {
+    const timestamp = new Date(start.getTime() + hourIndex * 60 * 60 * 1000);
 
     return {
       timestamp: timestamp.toISOString(),
