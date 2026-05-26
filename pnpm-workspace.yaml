@@ -1,9 +1,13 @@
+packages:
+  - "."
+
 allowBuilds:
-  core-js: true
-  esbuild: true
-  sharp: true
-  unrs-resolver: true
-  workerd: true
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+  core-js: set this to true or false
+  esbuild: set this to true or false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
+  workerd: set this to true or false
+
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
