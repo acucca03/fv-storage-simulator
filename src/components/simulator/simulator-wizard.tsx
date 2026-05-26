@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, type ChangeEvent } from "react";
 import type {
@@ -6,6 +6,7 @@ import type {
   SimulationSummary,
   UploadedConsumptionPoint,
 } from "@/types/energy";
+import type { AdvancedOptimizationResult, AdvancedSystemResult } from "@/lib/energy/advanced";
 import {
   formatCycles,
   formatKwh,
@@ -60,6 +61,7 @@ type SimulationApiResponse = {
   pvDataSource?: PvDataSource;
   consumptionDataSource?: ConsumptionDataSource;
   reportSeries?: SimulationReportSeries;
+  advanced?: AdvancedOptimizationResult;
   error?: string;
 };
 
@@ -74,43 +76,43 @@ const questions: Question[] = [
     id: "people",
     title: "Quante persone vivono abitualmente in casa? ",
     description: "Serve per distribuire meglio i consumi giornalieri.",
-    options: ["1 persona", "2 persone", "3 persone", "4 persone", "5 o più persone"],
+    options: ["1 persona", "2 persone", "3 persone", "4 persone", "5 o piÃ¹ persone"],
   },
   {
     id: "daytimePresence",
-    title: "Durante il giorno la casa è abitata? ",
-    description: "La presenza nelle ore di sole aumenta l’autoconsumo diretto.",
+    title: "Durante il giorno la casa Ã¨ abitata? ",
+    description: "La presenza nelle ore di sole aumenta lâ€™autoconsumo diretto.",
     options: ["Quasi mai", "Qualche volta", "Spesso", "Sempre"],
   },
   {
     id: "mainUsage",
     title: "Quando si concentrano maggiormente i consumi? ",
-    description: "Aiuta a costruire una curva giornaliera più realistica.",
+    description: "Aiuta a costruire una curva giornaliera piÃ¹ realistica.",
     options: ["Mattina", "Pomeriggio", "Sera", "Distribuiti durante il giorno"],
   },
   {
     id: "cooling",
     title: "Usi climatizzatori in estate? ",
     description: "I consumi estivi possono coincidere bene con la produzione FV.",
-    options: ["No", "Sì, poco", "Sì, spesso", "Sì, molte ore al giorno"],
+    options: ["No", "SÃ¬, poco", "SÃ¬, spesso", "SÃ¬, molte ore al giorno"],
   },
   {
     id: "heating",
     title: "Hai una pompa di calore elettrica? ",
     description: "La pompa di calore cambia molto il profilo invernale.",
-    options: ["No", "Sì, solo supporto", "Sì, principale riscaldamento"],
+    options: ["No", "SÃ¬, solo supporto", "SÃ¬, principale riscaldamento"],
   },
   {
     id: "cooking",
     title: "Che piano cottura utilizzi? ",
-    description: "L’induzione sposta una parte dei consumi sul vettore elettrico.",
+    description: "Lâ€™induzione sposta una parte dei consumi sul vettore elettrico.",
     options: ["Gas", "Induzione", "Misto"],
   },
   {
     id: "ev",
-    title: "Hai o prevedi un’auto elettrica? ",
-    description: "La ricarica domestica può pesare molto sul dimensionamento.",
-    options: ["No", "Sì, ma la carico raramente", "Sì, la carico spesso a casa"],
+    title: "Hai o prevedi unâ€™auto elettrica? ",
+    description: "La ricarica domestica puÃ² pesare molto sul dimensionamento.",
+    options: ["No", "SÃ¬, ma la carico raramente", "SÃ¬, la carico spesso a casa"],
   },
 ];
 
@@ -268,7 +270,7 @@ function InteractiveSizingExplorer({
             </div>
 
             <div className="shrink-0 rounded-full bg-[#f7f4ec] px-3 py-1.5 text-xs font-bold text-[#1f2933]">
-              {formatKwp(effectivePvKwp)} kWp · {formatKwp(effectiveBatteryKwh)} kWh
+              {formatKwp(effectivePvKwp)} kWp Â· {formatKwp(effectiveBatteryKwh)} kWh
             </div>
           </div>
 
@@ -330,7 +332,7 @@ function InteractiveSizingExplorer({
             <MetricCard
               label="Rientro"
               value={formatYears(selectedSummary.simplePaybackYears)}
-              detail={`${formatEuro(selectedInvestment)} invest. · ${formatEuro(selectedSavings)}/anno`}
+              detail={`${formatEuro(selectedInvestment)} invest. Â· ${formatEuro(selectedSavings)}/anno`}
               tone="gold"
             />
             <MetricCard
@@ -500,6 +502,198 @@ function StackedEnergyBar(props: {
   );
 }
 
+function formatAdvancedSystem(result?: AdvancedSystemResult) {
+  if (!result) return "n/d";
+
+  return `${formatKwp(result.pvKwp)} kWp · ${formatKwp(result.batteryKwh)} kWh`;
+}
+
+function AdvancedResultsBlock({
+  advanced,
+}: {
+  advanced?: AdvancedOptimizationResult;
+}) {
+  if (!advanced) return null;
+
+  const freeBest = advanced.freeScenario.bestNetBalance;
+  const domesticBest =
+    advanced.domesticScenario.bestCompromise ??
+    advanced.domesticScenario.bestNetBalance ??
+    advanced.recommendedDomestic;
+
+  const bestPayback =
+    advanced.domesticScenario.bestPayback ?? advanced.freeScenario.bestPayback;
+
+  const bestRoi =
+    advanced.domesticScenario.bestRoi ?? advanced.freeScenario.bestRoi;
+
+  const batteryComparisons = advanced.batteryComparisons.slice(0, 6);
+
+  return (
+    <section className="rounded-[1.25rem] border border-[#dbe7df] bg-[#fbfaf5] p-4 sm:p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#1f4d3a]">
+            Algoritmo avanzato
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-[#1f2933]">
+            Risultati calcolati con il nuovo motore FV + accumulo.
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#52615d]">
+            Qui il sito usa il nostro algoritmo: scenario libero, scenario domestico,
+            saldo netto a 20 anni, ROI, payback e confronto batteria contro assenza
+            di batteria.
+          </p>
+        </div>
+
+        <div className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[#1f4d3a]">
+          {advanced.allResults.length} combinazioni simulate
+        </div>
+      </div>
+
+      {advanced.warnings.length ? (
+        <div className="mt-4 rounded-[1rem] border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          <strong>Avvisi del modello:</strong>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {advanced.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Miglior compromesso domestico"
+          value={formatAdvancedSystem(domesticBest)}
+          detail={
+            domesticBest
+              ? `Saldo ${formatEuro(domesticBest.netBalance20YearsEur)} · ROI ${formatPercent(domesticBest.roi20YearsPercent)}% · payback ${formatYears(domesticBest.paybackYears ?? undefined)}`
+              : "Nessuna soluzione domestica valida."
+          }
+          tone="green"
+        />
+
+        <MetricCard
+          label="Scenario libero economico"
+          value={formatAdvancedSystem(freeBest)}
+          detail={
+            freeBest
+              ? `Saldo ${formatEuro(freeBest.netBalance20YearsEur)} · rapporto FV/consumi ${freeBest.productionToConsumptionRatio.toFixed(2).replace(".", ",")}`
+              : "Non disponibile."
+          }
+          tone="blue"
+        />
+
+        <MetricCard
+          label="Rientro più rapido"
+          value={formatAdvancedSystem(bestPayback)}
+          detail={
+            bestPayback
+              ? `Payback ${formatYears(bestPayback.paybackYears ?? undefined)} · investimento ${formatEuro(bestPayback.initialInvestmentEur)}`
+              : "Nessuna configurazione rientra."
+          }
+          tone="gold"
+        />
+
+        <MetricCard
+          label="Miglior ROI"
+          value={formatAdvancedSystem(bestRoi)}
+          detail={
+            bestRoi
+              ? `ROI ${formatPercent(bestRoi.roi20YearsPercent)}% · saldo ${formatEuro(bestRoi.netBalance20YearsEur)}`
+              : "Non disponibile."
+          }
+          tone="neutral"
+        />
+      </div>
+
+      {domesticBest ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-[1rem] bg-white p-4">
+            <div className="text-sm font-semibold text-[#52615d]">
+              Saldo netto 20 anni
+            </div>
+            <div className="mt-2 text-2xl font-bold text-[#1f4d3a]">
+              {formatEuro(domesticBest.netBalance20YearsEur)}
+            </div>
+          </div>
+
+          <div className="rounded-[1rem] bg-white p-4">
+            <div className="text-sm font-semibold text-[#52615d]">
+              Autoconsumo utile
+            </div>
+            <div className="mt-2 text-2xl font-bold text-[#1f4d3a]">
+              {formatPercent(domesticBest.usefulSelfConsumptionPercent)}%
+            </div>
+          </div>
+
+          <div className="rounded-[1rem] bg-white p-4">
+            <div className="text-sm font-semibold text-[#52615d]">
+              Autosufficienza
+            </div>
+            <div className="mt-2 text-2xl font-bold text-[#1f4d3a]">
+              {formatPercent(domesticBest.selfSufficiencyPercent)}%
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {batteryComparisons.length ? (
+        <div className="mt-4 overflow-hidden rounded-[1rem] border border-[#dbe7df] bg-white">
+          <div className="border-b border-[#edf1ed] px-4 py-3">
+            <h4 className="font-semibold text-[#1f2933]">
+              Confronto batteria migliore vs senza batteria
+            </h4>
+            <p className="mt-1 text-sm text-[#52615d]">
+              Questa tabella dice se l’accumulo migliora davvero il risultato economico oppure solo l’autonomia.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-[#f7f4ec] text-[#52615d]">
+                <tr>
+                  <th className="px-4 py-3">FV</th>
+                  <th className="px-4 py-3">Batteria migliore</th>
+                  <th className="px-4 py-3">Vantaggio economico</th>
+                  <th className="px-4 py-3">Autosufficienza +</th>
+                  <th className="px-4 py-3">Autoconsumo +</th>
+                  <th className="px-4 py-3">Conviene?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batteryComparisons.map((comparison) => (
+                  <tr key={comparison.pvKwp} className="border-t border-[#edf1ed]">
+                    <td className="px-4 py-3 font-semibold">
+                      {formatKwp(comparison.pvKwp)} kWp
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatKwp(comparison.bestBatteryKwh)} kWh
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatEuro(comparison.batteryNetAdvantageEur)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatPercent(comparison.selfSufficiencyGainPercent)} punti
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatPercent(comparison.usefulSelfConsumptionGainPercent)} punti
+                    </td>
+                    <td className="px-4 py-3">
+                      {comparison.batteryEconomicallyUseful ? "Sì" : "No / marginale"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function ResultsPanel(props: {
   summary: SimulationSummary;
   testedResults?: SimulationSummary[];
@@ -507,6 +701,7 @@ function ResultsPanel(props: {
   pvDataSource?: PvDataSource;
   consumptionDataSource?: ConsumptionDataSource;
   reportSeries?: SimulationReportSeries;
+  advanced?: AdvancedOptimizationResult;
   onRequestReportData?: () => Promise<SimulationApiResponse>;
 }) {
   const { summary } = props;
@@ -626,22 +821,22 @@ function ResultsPanel(props: {
             <p className="mt-3 max-w-3xl text-sm leading-6 sm:text-base sm:leading-7 text-white/80">
               Il sistema ha generato il profilo dei consumi, simulato produzione
               fotovoltaica, carica/scarica della batteria e confronto con la rete.
-              Poi ha scelto la combinazione più coerente tra{" "}
-              {props.testedResults?.length ?? "più"} scenari.
+              Poi ha scelto la combinazione piÃ¹ coerente tra{" "}
+              {props.testedResults?.length ?? "piÃ¹"} scenari.
             </p>
           </div>
 
           <div className="rounded-[1.25rem] bg-white/10 p-4 backdrop-blur">
             <div className="text-sm font-semibold text-white/70">
-              Località e fonte dati
+              LocalitÃ  e fonte dati
             </div>
             <div className="mt-2 text-2xl font-bold">
               {props.address?.trim() ? props.address : "Indirizzo inserito"}
             </div>
             <div className="mt-4 text-sm leading-6 text-white/70">
               <strong className="text-white">{props.pvDataSource?.label ?? "Produzione FV stimata"}</strong>
-              {props.pvDataSource?.provider ? ` · ${props.pvDataSource.provider}` : ""}
-              {props.pvDataSource?.note ? ` · ${props.pvDataSource.note}` : ""}
+              {props.pvDataSource?.provider ? ` Â· ${props.pvDataSource.provider}` : ""}
+              {props.pvDataSource?.note ? ` Â· ${props.pvDataSource.note}` : ""}
             </div>
             {props.pvDataSource?.latitude !== undefined &&
             props.pvDataSource.longitude !== undefined ? (
@@ -655,10 +850,10 @@ function ResultsPanel(props: {
               <div className="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-xs leading-5 text-white/70">
                 Consumi:{" "}
                 <strong className="text-white">{props.consumptionDataSource.label}</strong>
-                {" · "}
+                {" Â· "}
                 {formatKwh(props.consumptionDataSource.annualConsumptionKwh)} kWh/anno
                 {props.consumptionDataSource.fileName
-                  ? ` · ${props.consumptionDataSource.fileName}`
+                  ? ` Â· ${props.consumptionDataSource.fileName}`
                   : ""}
               </div>
             ) : null}
@@ -667,6 +862,8 @@ function ResultsPanel(props: {
       </div>
 
       <div className="space-y-3 p-4 sm:space-y-4 sm:p-5 md:p-6">
+        <AdvancedResultsBlock advanced={props.advanced} />
+
         <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
           <MetricCard
             label="Fotovoltaico calcolato"
@@ -724,14 +921,14 @@ function ResultsPanel(props: {
           <StackedEnergyBar
             title="Copertura dei consumi domestici"
             total={summary.annualConsumptionKwh}
-            caption="Mostra da dove arriva l’energia consumata dalla casa durante l’anno."
+            caption="Mostra da dove arriva lâ€™energia consumata dalla casa durante lâ€™anno."
             segments={demandSegments}
           />
 
           <StackedEnergyBar
             title="Utilizzo della produzione fotovoltaica"
             total={summary.annualPvProductionKwh}
-            caption="Mostra come viene distribuita l’energia prodotta dall’impianto FV."
+            caption="Mostra come viene distribuita lâ€™energia prodotta dallâ€™impianto FV."
             segments={pvUseSegments}
           />
         </div>
@@ -741,7 +938,7 @@ function ResultsPanel(props: {
             <h3 className="text-xl font-semibold sm:text-2xl">Lettura rapida</h3>
             <div className="mt-3 space-y-2 text-sm leading-6 text-[#52615d]">
               <p>
-                L’impianto consigliato copre{" "}
+                Lâ€™impianto consigliato copre{" "}
                 <strong className="text-[#1f4d3a]">
                   {formatPercent(summary.selfSufficiencyPercent)}%
                 </strong>{" "}
@@ -755,11 +952,11 @@ function ResultsPanel(props: {
                 vengono utilizzati dalla casa tra uso diretto e batteria.
               </p>
               <p>
-                La resa specifica stimata è circa{" "}
+                La resa specifica stimata Ã¨ circa{" "}
                 <strong className="text-[#1f4d3a]">
                   {formatKwh(specificYield)} kWh/kWp
                 </strong>
-                . {props.pvDataSource?.source === "pvgis" ? "Questo dato deriva dalla serie oraria PVGIS scalata sulla taglia scelta." : "Questo dato sarà più preciso quando saranno caricati consumi reali."}
+                . {props.pvDataSource?.source === "pvgis" ? "Questo dato deriva dalla serie oraria PVGIS scalata sulla taglia scelta." : "Questo dato sarÃ  piÃ¹ preciso quando saranno caricati consumi reali."}
               </p>
             </div>
           </article>
@@ -810,7 +1007,7 @@ function ResultsPanel(props: {
               </h3>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[#52615d]">
                 Il report include riepilogo tecnico, grafici mensili di consumi
-                e produzione FV, uso della rete, andamento dell’accumulo,
+                e produzione FV, uso della rete, andamento dellâ€™accumulo,
                 analisi automatica e limiti della stima preliminare.
               </p>
             </div>
@@ -919,7 +1116,7 @@ function LocationSearchInput({
 
     if (query.length < 3) {
       setResults([]);
-      setSearchError("Scrivi almeno 3 caratteri, meglio città + nazione.");
+      setSearchError("Scrivi almeno 3 caratteri, meglio cittÃ  + nazione.");
       return;
     }
 
@@ -934,7 +1131,7 @@ function LocationSearchInput({
       };
 
       if (!response.ok) {
-        throw new Error(data.message ?? "Ricerca località non riuscita.");
+        throw new Error(data.message ?? "Ricerca localitÃ  non riuscita.");
       }
 
       const foundResults = data.results ?? [];
@@ -942,7 +1139,7 @@ function LocationSearchInput({
 
       if (!foundResults.length) {
         setSearchError(
-          "Nessuna località trovata. Prova con città + nazione, ad esempio “Cagliari, Italia”.",
+          "Nessuna localitÃ  trovata. Prova con cittÃ  + nazione, ad esempio â€œCagliari, Italiaâ€.",
         );
       }
     } catch (error) {
@@ -950,7 +1147,7 @@ function LocationSearchInput({
       setSearchError(
         error instanceof Error
           ? error.message
-          : "Impossibile cercare la località.",
+          : "Impossibile cercare la localitÃ .",
       );
     } finally {
       setIsSearching(false);
@@ -996,18 +1193,18 @@ function LocationSearchInput({
           disabled={isSearching || value.trim().length < 3}
           className="rounded-full bg-[#1f4d3a] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#173b2c] disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {isSearching ? "Cerco..." : "Cerca località"}
+          {isSearching ? "Cerco..." : "Cerca localitÃ "}
         </button>
       </div>
 
       <p className="mt-3 text-sm leading-6 text-[#52615d]">
-        Scrivi città e nazione, poi scegli il risultato corretto. Esempi:
-        “Cagliari, Italia”, “Utsjoki, Finlandia”, “Madrid, Spagna”.
+        Scrivi cittÃ  e nazione, poi scegli il risultato corretto. Esempi:
+        â€œCagliari, Italiaâ€, â€œUtsjoki, Finlandiaâ€, â€œMadrid, Spagnaâ€.
       </p>
 
       {selectedLocation ? (
         <div className="mt-3 rounded-2xl bg-[#eef5ef] px-4 py-3 text-sm leading-6 text-[#1f4d3a]">
-          <strong>Località selezionata:</strong> {selectedLocation.displayName}
+          <strong>LocalitÃ  selezionata:</strong> {selectedLocation.displayName}
           <br />
           Coordinate usate: {selectedLocation.latitude.toFixed(4)},{" "}
           {selectedLocation.longitude.toFixed(4)}
@@ -1040,7 +1237,7 @@ function LocationSearchInput({
               </span>
               <span className="mt-1 block text-xs text-[#52615d]">
                 {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-                {location.isHighLatitude ? " · alta latitudine" : ""}
+                {location.isHighLatitude ? " Â· alta latitudine" : ""}
               </span>
             </button>
           ))}
@@ -1213,14 +1410,14 @@ export function SimulatorWizard() {
 
               <div className="flex flex-col justify-center p-4 sm:p-5 md:p-6">
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl bg-[#eef5ef] text-lg">
-                  📄
+                  ðŸ“„
                 </div>
                 <h2 className="text-xl font-semibold sm:text-2xl">
                   Ho i file dei consumi reali
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#52615d]">
-                  Il sistema riconoscerà formato, colonne, unità e risoluzione
-                  temporale. Poi convertirà i dati in una curva energetica
+                  Il sistema riconoscerÃ  formato, colonne, unitÃ  e risoluzione
+                  temporale. Poi convertirÃ  i dati in una curva energetica
                   utilizzabile per la simulazione.
                 </p>
               </div>
@@ -1249,14 +1446,14 @@ export function SimulatorWizard() {
 
               <div className="flex flex-col justify-center p-4 sm:p-5 md:p-6">
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl bg-[#fff7d7] text-lg">
-                  ⚡
+                  âš¡
                 </div>
                 <h2 className="text-xl font-semibold sm:text-2xl">
                   Non ho file, conosco il consumo annuo
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#52615d]">
                   Inserisci i kWh annui e rispondi a un questionario: genereremo
-                  un profilo statistico più realistico di una media piatta.
+                  un profilo statistico piÃ¹ realistico di una media piatta.
                 </p>
               </div>
             </div>
@@ -1303,7 +1500,7 @@ export function SimulatorWizard() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef5ef] text-2xl">
-                      📄
+                      ðŸ“„
                     </div>
                     <div>
                       <div className="font-semibold text-[#1f2933]">
@@ -1343,13 +1540,13 @@ export function SimulatorWizard() {
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">2. Accedi con SPID.</strong>
                             <br />
-                            Completa l’autenticazione e accedi alla tua area privata.
+                            Completa lâ€™autenticazione e accedi alla tua area privata.
                           </li>
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">3. Seleziona la fornitura elettrica.</strong>
                             <br />
                             Cerca la tua utenza luce, eventualmente riconoscendola dal POD o
-                            dall’indirizzo di fornitura.
+                            dallâ€™indirizzo di fornitura.
                           </li>
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">4. Vai su letture o consumi.</strong>
@@ -1360,7 +1557,7 @@ export function SimulatorWizard() {
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">5. Scarica il file disponibile.</strong>
                             <br />
-                            Se trovi un’esportazione CSV/TXT, scaricala e caricala qui nel simulatore.
+                            Se trovi unâ€™esportazione CSV/TXT, scaricala e caricala qui nel simulatore.
                           </li>
                         </ol>
 
@@ -1380,21 +1577,21 @@ export function SimulatorWizard() {
                         </div>
                         <div className="mt-5 grid gap-3">
                           <div className="rounded-2xl border border-[#e5ece7] p-4">
-                            <div className="text-2xl">🔐</div>
+                            <div className="text-2xl">ðŸ”</div>
                             <div className="mt-2 font-semibold text-[#1f2933]">Accesso SPID</div>
                             <p className="mt-1 text-sm leading-6 text-[#52615d]">
-                              Entra nell’area privata del portale.
+                              Entra nellâ€™area privata del portale.
                             </p>
                           </div>
                           <div className="rounded-2xl border border-[#e5ece7] p-4">
-                            <div className="text-2xl">🏠</div>
+                            <div className="text-2xl">ðŸ </div>
                             <div className="mt-2 font-semibold text-[#1f2933]">Utenza luce</div>
                             <p className="mt-1 text-sm leading-6 text-[#52615d]">
                               Seleziona la fornitura elettrica corretta.
                             </p>
                           </div>
                           <div className="rounded-2xl border border-[#e5ece7] p-4">
-                            <div className="text-2xl">📊</div>
+                            <div className="text-2xl">ðŸ“Š</div>
                             <div className="mt-2 font-semibold text-[#1f2933]">Letture e consumi</div>
                             <p className="mt-1 text-sm leading-6 text-[#52615d]">
                               Scarica il file con le misure disponibili.
@@ -1403,8 +1600,8 @@ export function SimulatorWizard() {
                         </div>
 
                         <p className="mt-4 rounded-2xl bg-[#f7f4ec] p-4 text-xs leading-6 text-[#52615d]">
-                          Nota: il nome delle sezioni può cambiare leggermente nel tempo.
-                          Cerca voci come “letture”, “consumi”, “misure” o “storico consumi”.
+                          Nota: il nome delle sezioni puÃ² cambiare leggermente nel tempo.
+                          Cerca voci come â€œlettureâ€, â€œconsumiâ€, â€œmisureâ€ o â€œstorico consumiâ€.
                         </p>
                       </div>
                     </div>
@@ -1465,7 +1662,7 @@ export function SimulatorWizard() {
 
                   {uploadedFileSummary.selectedYear ? (
                     <div className="mt-4 rounded-2xl bg-white/70 p-4 text-sm leading-6 text-[#52615d]">
-                      Il sistema ha selezionato automaticamente il periodo più coerente
+                      Il sistema ha selezionato automaticamente il periodo piÃ¹ coerente
                       disponibile e ha completato eventuali dati mancanti per ottenere
                       un anno utile alla simulazione.
                     </div>
@@ -1475,7 +1672,7 @@ export function SimulatorWizard() {
 
               <div className="mt-4">
                 <LocationSearchInput
-                  label="Indirizzo abitazione / località impianto"
+                  label="Indirizzo abitazione / localitÃ  impianto"
                   value={address}
                   onChange={setAddress}
                   selectedLocation={selectedLocation}
@@ -1536,7 +1733,7 @@ export function SimulatorWizard() {
 
               <div className="mt-4">
                 <LocationSearchInput
-                  label="Indirizzo abitazione / località impianto"
+                  label="Indirizzo abitazione / localitÃ  impianto"
                   value={address}
                   onChange={setAddress}
                   selectedLocation={selectedLocation}
@@ -1630,7 +1827,7 @@ export function SimulatorWizard() {
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 sm:text-base sm:leading-7 text-white/80">
               Con i dati inseriti il sistema genera o usa un profilo annuale, simula FV e
-              accumulo, poi prova più combinazioni per avvicinarsi all’obiettivo scelto.
+              accumulo, poi prova piÃ¹ combinazioni per avvicinarsi allâ€™obiettivo scelto.
             </p>
           </div>
 
@@ -1659,9 +1856,11 @@ export function SimulatorWizard() {
           pvDataSource={simulation.pvDataSource}
           consumptionDataSource={simulation.consumptionDataSource}
           reportSeries={simulation.reportSeries}
+          advanced={simulation.advanced}
           onRequestReportData={() => requestSimulation(true)}
         />
       ) : null}
     </div>
   );
 }
+
