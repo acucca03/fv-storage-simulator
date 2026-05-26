@@ -1,4 +1,4 @@
-﻿import type { MinuteEnergyPoint, PvMinutePoint } from "@/types/energy";
+import type { MinuteEnergyPoint, PvMinutePoint } from "@/types/energy";
 
 export type AdvancedSizingGrid = {
   pvSizesKwp: number[];

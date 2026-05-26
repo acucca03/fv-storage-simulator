@@ -1,4 +1,4 @@
-﻿export { defaultAdvancedEngineConfig } from "./advanced-config";
+export { defaultAdvancedEngineConfig } from "./advanced-config";
 export { runAdvancedOptimization } from "./advanced-engine";
 export type {
   AdvancedBatteryComparison,

@@ -1,4 +1,4 @@
-﻿import type { AdvancedEngineConfig } from "./advanced-types";
+import type { AdvancedEngineConfig } from "./advanced-types";
 
 export const defaultAdvancedEngineConfig: AdvancedEngineConfig = {
   sizing: {

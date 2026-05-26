@@ -1,4 +1,4 @@
-﻿import { defaultAdvancedEngineConfig, type AdvancedOptimizationResult, type AdvancedSystemResult } from "@/lib/energy/advanced";
+import { defaultAdvancedEngineConfig, type AdvancedOptimizationResult, type AdvancedSystemResult } from "@/lib/energy/advanced";
 import type {
   SimulationReportPeriod,
   SimulationReportSeries,
