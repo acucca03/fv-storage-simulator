@@ -1,8 +1,7 @@
-﻿import { defaultAdvancedEngineConfig } from "@/lib/energy/advanced";
+import { defaultAdvancedEngineConfig } from "@/lib/energy/advanced";
 
 const config = defaultAdvancedEngineConfig;
 const economics = config.economics;
-const battery = config.battery;
 const domestic = config.domesticConstraints;
 const weights = config.compromiseWeights;
 
