@@ -1,0 +1,44 @@
+{
+  "name": "fv-storage-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "check": "pnpm lint && pnpm build",
+    "verify:structure": "node scripts/verify-foundation.mjs",
+    "check:full": "pnpm check && pnpm verify:structure && pnpm verify:architecture && pnpm verify:configuration && pnpm verify:design-system && pnpm verify:business-modules && pnpm verify:seo && pnpm verify:performance && pnpm verify:stability && pnpm verify:security && pnpm verify:reliability && pnpm verify:accessibility && pnpm verify:dx && pnpm verify:release",
+    "verify:performance": "node scripts/verify-performance.mjs",
+    "verify:security": "node scripts/verify-security.mjs",
+    "verify:accessibility": "node scripts/verify-accessibility.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "verify:architecture": "node scripts/verify-architecture.mjs",
+    "verify:configuration": "node scripts/verify-configuration.mjs",
+    "verify:design-system": "node scripts/verify-design-system.mjs",
+    "verify:business-modules": "node scripts/verify-business-modules.mjs",
+    "verify:seo": "node scripts/verify-seo.mjs",
+    "verify:stability": "node scripts/verify-stability.mjs",
+    "verify:reliability": "node scripts/verify-reliability.mjs",
+    "health": "pnpm check:full",
+    "verify:dx": "node scripts/verify-dx.mjs",
+    "release:check": "pnpm health"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

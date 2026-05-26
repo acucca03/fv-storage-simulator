@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  background: #0a0a0a;
+  color: #ffffff;
+}
+
+html {
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #0a0a0a;
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 4px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 4px;
+}
+
+/* Final mobile/selection polish:
+   - selection remains readable on desktop;
+   - accidental long-press text selection is reduced on touch devices;
+   - form fields remain selectable/editable. */
+::selection {
+  background: rgba(242, 201, 76, 0.55);
+  color: #173b47;
+  text-shadow: none;
+}
+
+::-moz-selection {
+  background: rgba(242, 201, 76, 0.55);
+  color: #173b47;
+  text-shadow: none;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  -webkit-tap-highlight-color: rgba(31, 77, 58, 0.14);
+}
+
+@media (pointer: coarse) {
+  main,
+  header,
+  footer,
+  nav,
+  section,
+  article,
+  aside,
+  button,
+  a,
+  label,
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  span,
+  strong,
+  small,
+  dt,
+  dd,
+  li {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea,
+  select,
+  option,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+}
