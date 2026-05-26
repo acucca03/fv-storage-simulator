@@ -1,24 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { generateStatisticalConsumptionProfile } from "@/lib/energy/consumption/generate-statistical-profile";
 import { normalizeUploadedConsumptionProfile } from "@/lib/energy/consumption/normalize-uploaded-consumption-profile";
-import { createDefaultBatteryConfig } from "@/lib/energy/battery/default-battery-config";
-import { optimizeSystem } from "@/lib/energy/optimizer/optimize-system";
 import { generateMockPvProfile } from "@/lib/energy/pv/generate-mock-pv-profile";
+import { createDefaultBatteryConfig } from "@/lib/energy/battery/default-battery-config";
+import { simulateEnergySystem } from "@/lib/energy/simulation/simulate-energy-system";
 import { createReportSeries } from "@/lib/energy/report/create-report-series";
-import { aggregateConsumptionProfileByResolution, aggregatePvProfileByResolution } from "@/lib/energy/profiles/aggregate-energy-profiles";
+import {
+  aggregateConsumptionProfileByResolution,
+  aggregatePvProfileByResolution,
+} from "@/lib/energy/profiles/aggregate-energy-profiles";
 import {
   generatePvgisPvProfile,
   scalePvgisReferenceProfile,
 } from "@/lib/energy/pv/generate-pvgis-pv-profile";
 import { geocodeAddress } from "@/lib/geo/geocode-address";
-import { simulateEnergySystem } from "@/lib/energy/simulation/simulate-energy-system";
+import {
+  runAdvancedOptimization,
+  type AdvancedOptimizationResult,
+  type AdvancedSystemResult,
+} from "@/lib/energy/advanced";
 import type {
   MinuteEnergyPoint,
   PvMinutePoint,
+  SimulationSummary,
   UploadedConsumptionPoint,
 } from "@/types/energy";
 
 type SimulationAnswers = Record<string, string | undefined>;
+
+type SelectedGeocodedLocation = {
+  latitude: number;
+  longitude: number;
+  displayName?: string;
+};
 
 type SimulationRequestBody = {
   annualConsumptionKwh?: number | string;
@@ -29,12 +43,6 @@ type SimulationRequestBody = {
   target?: string;
   answers?: SimulationAnswers;
   includeReport?: boolean;
-};
-
-type SelectedGeocodedLocation = {
-  latitude: number;
-  longitude: number;
-  displayName?: string;
 };
 
 type PvDataSourceResponse = {
@@ -57,50 +65,6 @@ type ConsumptionDataSourceResponse = {
   note?: string;
 };
 
-function getTargetSelfConsumptionPercent(target?: string) {
-  if (!target) return 45;
-
-  const match = target.match(/(\d+(?:[,.]\d+)?)/);
-  if (!match) return 45;
-
-  return Number(match[1].replace(",", "."));
-}
-
-function getOptimizationGoal(target?: string) {
-  const normalizedTarget = target?.toLowerCase() ?? "";
-
-  if (
-    normalizedTarget.includes("compromesso") ||
-    normalizedTarget.includes("economico") ||
-    normalizedTarget.includes("rientro") ||
-    normalizedTarget.includes("payback")
-  ) {
-    return "balanced" as const;
-  }
-
-  if (
-    normalizedTarget.includes("autoconsumo") ||
-    normalizedTarget.includes("self consumption")
-  ) {
-    return "target_self_consumption" as const;
-  }
-
-  if (normalizedTarget.includes("autosufficienza")) {
-    return "maximize_self_sufficiency" as const;
-  }
-
-  if (normalizedTarget.includes("minimo prelievo")) {
-    return "minimize_grid_import" as const;
-  }
-
-  if (normalizedTarget.includes("costo") || normalizedTarget.includes("beneficio")) {
-    return "balanced" as const;
-  }
-
-  return "balanced" as const;
-}
-
-
 function isValidSelectedLocation(
   location: SelectedGeocodedLocation | undefined,
 ): location is SelectedGeocodedLocation {
@@ -116,7 +80,10 @@ function isValidSelectedLocation(
   );
 }
 
-async function createPvProfileFactory(address: string | undefined, selectedLocation?: SelectedGeocodedLocation): Promise<{
+async function createPvProfileFactory(
+  address: string | undefined,
+  selectedLocation?: SelectedGeocodedLocation,
+): Promise<{
   pvProfileFactory?: (pvKwp: number, days: number) => PvMinutePoint[];
   pvDataSource: PvDataSourceResponse;
 }> {
@@ -134,16 +101,16 @@ async function createPvProfileFactory(address: string | undefined, selectedLocat
 
   try {
     const selectedGeocoding = isValidSelectedLocation(selectedLocation)
-    ? {
-        latitude: selectedLocation.latitude,
-        longitude: selectedLocation.longitude,
-        displayName:
-          selectedLocation.displayName ?? address ?? "Località selezionata",
-        provider: "nominatim" as const,
-      }
-    : null;
+      ? {
+          latitude: selectedLocation.latitude,
+          longitude: selectedLocation.longitude,
+          displayName:
+            selectedLocation.displayName ?? address ?? "Località selezionata",
+          provider: "nominatim" as const,
+        }
+      : null;
 
-  const geocoding = selectedGeocoding ?? (await geocodeAddress(address ?? ""));
+    const geocoding = selectedGeocoding ?? (await geocodeAddress(address));
 
     if (!geocoding) {
       return {
@@ -176,9 +143,9 @@ async function createPvProfileFactory(address: string | undefined, selectedLocat
         longitude: geocoding.longitude,
         resolvedAddress: geocoding.displayName,
         note:
-        Math.abs(geocoding.latitude) >= 60
-          ? "Profilo FV PVGIS su località ad alta latitudine: stima più indicativa."
-          : "Profilo FV costruito da dati orari PVGIS e scalato sulle taglie testate.",
+          Math.abs(geocoding.latitude) >= 60
+            ? "Profilo FV PVGIS su località ad alta latitudine: stima più indicativa."
+            : "Profilo FV costruito da dati orari PVGIS e scalato sulle taglie testate.",
       },
     };
   } catch {
@@ -222,6 +189,7 @@ function createConsumptionProfile(body: SimulationRequestBody): {
   }
 
   const answers = body.answers ?? {};
+
   const consumptionProfile = generateStatisticalConsumptionProfile({
     annualConsumptionKwh,
     days: 365,
@@ -243,6 +211,68 @@ function createConsumptionProfile(body: SimulationRequestBody): {
       note: "Profilo statistico generato dalle risposte inserite.",
     },
   };
+}
+
+function mapAdvancedToLegacySummary(
+  result: AdvancedSystemResult,
+): SimulationSummary {
+  const equivalentBatteryCycles =
+    result.batteryKwh > 0 ? result.batteryToLoadKwh / result.batteryKwh : 0;
+
+  return {
+    annualConsumptionKwh: result.annualConsumptionKwh,
+    annualPvProductionKwh: result.annualPvProductionKwh,
+    directSelfConsumptionKwh: result.directSelfConsumptionKwh,
+    batterySelfConsumptionKwh: result.batteryToLoadKwh,
+    gridImportKwh: result.gridImportKwh,
+    gridExportKwh: result.gridExportKwh,
+
+    selfConsumptionPercent: result.usefulSelfConsumptionPercent,
+    selfSufficiencyPercent: result.selfSufficiencyPercent,
+
+    recommendedPvKwp: result.pvKwp,
+    recommendedBatteryKwh: result.batteryKwh,
+
+    preciseRecommendedPvKwp: result.pvKwp,
+    preciseRecommendedBatteryKwh: result.batteryKwh,
+    roundedRecommendedPvKwp: result.pvKwp,
+    roundedRecommendedBatteryKwh: result.batteryKwh,
+
+    commercialRoundingNote:
+      "Risultato calcolato con il nuovo algoritmo avanzato: scenario libero, scenario domestico, payback, ROI e saldo netto a 20 anni.",
+
+    equivalentBatteryCycles,
+    pvUsefulLifeYears: 25,
+    batteryUsefulLifeYears: result.batteryKwh > 0 ? 10 : 0,
+    batteryUsefulLifeLimit:
+      result.batteryKwh > 0 ? "calendar" : "not_applicable",
+    batteryCycleLifeCycles: result.batteryKwh > 0 ? 6000 : 0,
+    batteryCalendarLifeYears: result.batteryKwh > 0 ? 10 : 0,
+
+    estimatedInvestmentEur: result.initialInvestmentEur,
+    annualEnergySavingsEur: result.annualOperatingBenefitEur,
+    simplePaybackYears: result.paybackYears ?? undefined,
+    baselineAnnualEnergyCostEur: result.annualCostWithoutSystemEur,
+    estimatedAnnualEnergyCostAfterSystemEur:
+      result.annualEnergyCostWithSystemEur + result.annualMaintenanceEur,
+
+    targetStatus: result.isDomesticValid ? "achieved" : "partial",
+    targetSelfConsumptionPercent: 20,
+    selfConsumptionTargetGapPercent: Math.max(
+      0,
+      20 - result.usefulSelfConsumptionPercent,
+    ),
+  };
+}
+
+function pickRecommendedResult(advanced: AdvancedOptimizationResult) {
+  return (
+    advanced.recommendedDomestic ??
+    advanced.domesticScenario.bestCompromise ??
+    advanced.domesticScenario.bestNetBalance ??
+    advanced.freeScenario.bestNetBalance ??
+    advanced.allResults[0]
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -267,7 +297,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { pvProfileFactory, pvDataSource } = await createPvProfileFactory(body.address, body.selectedLocation);
+  const { pvProfileFactory, pvDataSource } = await createPvProfileFactory(
+    body.address,
+    body.selectedLocation,
+  );
 
   const reportConsumptionProfile = aggregateConsumptionProfileByResolution(
     consumptionProfile,
@@ -285,17 +318,20 @@ export async function POST(request: NextRequest) {
   const optimizationPvProfileFactory = (pvKwp: number, days: number) =>
     aggregatePvProfileByResolution(getPvProfile(pvKwp, days), 60);
 
-  const result = optimizeSystem({
+  const advanced = runAdvancedOptimization({
     consumptionProfile: reportConsumptionProfile,
-    targetSelfConsumptionPercent: getTargetSelfConsumptionPercent(body.target),
-    goal: getOptimizationGoal(body.target),
     pvProfileFactory: optimizationPvProfileFactory,
   });
 
+  const recommendedAdvanced = pickRecommendedResult(advanced);
+  const summary = mapAdvancedToLegacySummary(recommendedAdvanced);
+  const testedResults = advanced.allResults.map(mapAdvancedToLegacySummary);
+
   if (!body.includeReport) {
     return NextResponse.json({
-      summary: result.bestSummary,
-      testedResults: result.testedResults,
+      summary,
+      testedResults,
+      advanced,
       address: body.address ?? "",
       pvDataSource,
       consumptionDataSource,
@@ -303,11 +339,11 @@ export async function POST(request: NextRequest) {
   }
 
   const reportPvKwp =
-    result.bestSummary.roundedRecommendedPvKwp ??
-    result.bestSummary.recommendedPvKwp;
+    summary.roundedRecommendedPvKwp ?? summary.recommendedPvKwp;
+
   const reportBatteryKwh =
-    result.bestSummary.roundedRecommendedBatteryKwh ??
-    result.bestSummary.recommendedBatteryKwh;
+    summary.roundedRecommendedBatteryKwh ?? summary.recommendedBatteryKwh;
+
   const reportDays = Math.max(
     1,
     reportConsumptionProfile.reduce(
@@ -328,8 +364,9 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({
-    summary: result.bestSummary,
-    testedResults: result.testedResults,
+    summary,
+    testedResults,
+    advanced,
     address: body.address ?? "",
     pvDataSource,
     consumptionDataSource,
