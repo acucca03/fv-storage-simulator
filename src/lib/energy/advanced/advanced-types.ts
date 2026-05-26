@@ -158,6 +158,7 @@ export type AdvancedScenarioSelection = {
 };
 
 export type AdvancedOptimizationResult = {
+  usedConfig: AdvancedEngineConfig;
   allResults: AdvancedSystemResult[];
 
   freeScenario: AdvancedScenarioSelection;

@@ -644,6 +644,8 @@ export function runAdvancedOptimization(
   );
 
   const result: AdvancedOptimizationResult = {
+    usedConfig: config,
+
     allResults,
 
     freeScenario: {

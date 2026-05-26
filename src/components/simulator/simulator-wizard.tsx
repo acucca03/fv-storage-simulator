@@ -6,7 +6,7 @@ import type {
   SimulationSummary,
   UploadedConsumptionPoint,
 } from "@/types/energy";
-import type { AdvancedOptimizationResult, AdvancedSystemResult } from "@/lib/energy/advanced";
+import type { AdvancedEngineConfig, AdvancedOptimizationResult, AdvancedSystemResult } from "@/lib/energy/advanced";
 import {
   formatCycles,
   formatKwh,
@@ -76,43 +76,43 @@ const questions: Question[] = [
     id: "people",
     title: "Quante persone vivono abitualmente in casa? ",
     description: "Serve per distribuire meglio i consumi giornalieri.",
-    options: ["1 persona", "2 persone", "3 persone", "4 persone", "5 o piÃ¹ persone"],
+    options: ["1 persona", "2 persone", "3 persone", "4 persone", "5 o più persone"],
   },
   {
     id: "daytimePresence",
-    title: "Durante il giorno la casa Ã¨ abitata? ",
-    description: "La presenza nelle ore di sole aumenta lâ€™autoconsumo diretto.",
+    title: "Durante il giorno la casa è abitata? ",
+    description: "La presenza nelle ore di sole aumenta l’autoconsumo diretto.",
     options: ["Quasi mai", "Qualche volta", "Spesso", "Sempre"],
   },
   {
     id: "mainUsage",
     title: "Quando si concentrano maggiormente i consumi? ",
-    description: "Aiuta a costruire una curva giornaliera piÃ¹ realistica.",
+    description: "Aiuta a costruire una curva giornaliera più realistica.",
     options: ["Mattina", "Pomeriggio", "Sera", "Distribuiti durante il giorno"],
   },
   {
     id: "cooling",
     title: "Usi climatizzatori in estate? ",
     description: "I consumi estivi possono coincidere bene con la produzione FV.",
-    options: ["No", "SÃ¬, poco", "SÃ¬, spesso", "SÃ¬, molte ore al giorno"],
+    options: ["No", "Sì, poco", "Sì, spesso", "Sì, molte ore al giorno"],
   },
   {
     id: "heating",
     title: "Hai una pompa di calore elettrica? ",
     description: "La pompa di calore cambia molto il profilo invernale.",
-    options: ["No", "SÃ¬, solo supporto", "SÃ¬, principale riscaldamento"],
+    options: ["No", "Sì, solo supporto", "Sì, principale riscaldamento"],
   },
   {
     id: "cooking",
     title: "Che piano cottura utilizzi? ",
-    description: "Lâ€™induzione sposta una parte dei consumi sul vettore elettrico.",
+    description: "L’induzione sposta una parte dei consumi sul vettore elettrico.",
     options: ["Gas", "Induzione", "Misto"],
   },
   {
     id: "ev",
-    title: "Hai o prevedi unâ€™auto elettrica? ",
-    description: "La ricarica domestica puÃ² pesare molto sul dimensionamento.",
-    options: ["No", "SÃ¬, ma la carico raramente", "SÃ¬, la carico spesso a casa"],
+    title: "Hai o prevedi un’auto elettrica? ",
+    description: "La ricarica domestica può pesare molto sul dimensionamento.",
+    options: ["No", "Sì, ma la carico raramente", "Sì, la carico spesso a casa"],
   },
 ];
 
@@ -270,7 +270,7 @@ function InteractiveSizingExplorer({
             </div>
 
             <div className="shrink-0 rounded-full bg-[#f7f4ec] px-3 py-1.5 text-xs font-bold text-[#1f2933]">
-              {formatKwp(effectivePvKwp)} kWp Â· {formatKwp(effectiveBatteryKwh)} kWh
+              {formatKwp(effectivePvKwp)} kWp · {formatKwp(effectiveBatteryKwh)} kWh
             </div>
           </div>
 
@@ -332,7 +332,7 @@ function InteractiveSizingExplorer({
             <MetricCard
               label="Rientro"
               value={formatYears(selectedSummary.simplePaybackYears)}
-              detail={`${formatEuro(selectedInvestment)} invest. Â· ${formatEuro(selectedSavings)}/anno`}
+              detail={`${formatEuro(selectedInvestment)} invest. · ${formatEuro(selectedSavings)}/anno`}
               tone="gold"
             />
             <MetricCard
@@ -502,6 +502,132 @@ function StackedEnergyBar(props: {
   );
 }
 
+
+function formatEuroPerKwh(value: number) {
+  return `${value.toFixed(4).replace(".", ",")} €/kWh`;
+}
+
+function formatEuroPerKwp(value: number) {
+  return `${formatEuro(value)}/kWp`;
+}
+
+function AssumptionItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1rem] bg-white p-3">
+      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#52615d]">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-bold text-[#1f2933]">{value}</div>
+    </div>
+  );
+}
+
+function AdvancedAssumptionsBlock({
+  config,
+}: {
+  config: AdvancedEngineConfig;
+}) {
+  const economics = config.economics;
+  const domestic = config.domesticConstraints;
+
+  const inverterTable = economics.inverterCostTable
+    .map((point) => `${point.size} kWp: ${formatEuro(point.costEur)}`)
+    .join(" · ");
+
+  const batteryTable = economics.batteryCostTable
+    .map((point) => `${point.size} kWh: ${formatEuro(point.costEur)}`)
+    .join(" · ");
+
+  return (
+    <details className="mt-4 rounded-[1rem] border border-[#dbe7df] bg-white p-4">
+      <summary className="cursor-pointer text-base font-bold text-[#1f4d3a]">
+        Parametri usati nella simulazione
+      </summary>
+
+      <p className="mt-2 text-sm leading-6 text-[#52615d]">
+        Questi sono i valori economici e tecnici usati dal modello. Sono mostrati
+        prima dei risultati per rendere la simulazione trasparente e modificabile.
+      </p>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <AssumptionItem
+          label="Energia prelevata"
+          value={formatEuroPerKwh(economics.gridImportPriceEurPerKwh)}
+        />
+        <AssumptionItem
+          label="Energia immessa"
+          value={formatEuroPerKwh(economics.gridExportValueEurPerKwh)}
+        />
+        <AssumptionItem
+          label="Costo materiali FV"
+          value={formatEuroPerKwp(economics.pvMaterialCostEurPerKwp)}
+        />
+        <AssumptionItem
+          label="Costi fissi impianto"
+          value={formatEuro(economics.fixedSystemCostEur)}
+        />
+        <AssumptionItem
+          label="Manodopera base"
+          value={formatEuro(economics.baseLaborCostEur)}
+        />
+        <AssumptionItem
+          label="Manodopera variabile"
+          value={formatEuroPerKwp(economics.laborCostEurPerKwp)}
+        />
+        <AssumptionItem
+          label="Sostituzione batteria"
+          value={`anno ${economics.batteryReplacementYear} · ${formatPercent(economics.batteryReplacementCostFactor * 100)}% del costo iniziale`}
+        />
+        <AssumptionItem
+          label="Detrazione fiscale"
+          value={
+            economics.taxDeductionEnabled
+              ? `${formatPercent(economics.taxDeductionRate * 100)}% in ${economics.taxDeductionYears} anni`
+              : "Non considerata"
+          }
+        />
+        <AssumptionItem
+          label="Manutenzione"
+          value={`${formatEuro(economics.annualFixedMaintenanceEur)}/anno + ${formatEuro(economics.annualPvMaintenanceEurPerKwp)}/kWp + ${formatEuro(economics.annualBatteryMaintenanceEurPerKwh)}/kWh batt.`}
+        />
+        <AssumptionItem
+          label="Analisi economica"
+          value={`${economics.analysisYears} anni`}
+        />
+        <AssumptionItem
+          label="Vincolo FV/consumi"
+          value={`max ${domestic.maxProductionToConsumptionRatio.toFixed(1).replace(".", ",")} volte i consumi`}
+        />
+        <AssumptionItem
+          label="Autoconsumo minimo"
+          value={`${formatPercent(domestic.minUsefulSelfConsumptionPercent)}%`}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-[1rem] bg-[#fbfaf5] p-3 text-sm leading-6 text-[#52615d]">
+          <strong className="text-[#1f2933]">Tabella inverter:</strong>
+          <br />
+          {inverterTable}
+        </div>
+
+        <div className="rounded-[1rem] bg-[#fbfaf5] p-3 text-sm leading-6 text-[#52615d]">
+          <strong className="text-[#1f2933]">Tabella batterie:</strong>
+          <br />
+          {batteryTable}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+
 function formatAdvancedSystem(result?: AdvancedSystemResult) {
   if (!result) return "n/d";
 
@@ -550,6 +676,8 @@ function AdvancedResultsBlock({
           {advanced.allResults.length} combinazioni simulate
         </div>
       </div>
+
+      {advanced.usedConfig ? <AdvancedAssumptionsBlock config={advanced.usedConfig} /> : null}
 
       {advanced.warnings.length ? (
         <div className="mt-4 rounded-[1rem] border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
@@ -714,6 +842,14 @@ function ResultsPanel(props: {
   const locallyUsedPvKwh =
     summary.directSelfConsumptionKwh + summary.batterySelfConsumptionKwh;
 
+  const batteryLossesKwh = Math.max(
+    0,
+    summary.annualPvProductionKwh -
+      summary.directSelfConsumptionKwh -
+      summary.batterySelfConsumptionKwh -
+      summary.gridExportKwh,
+  );
+
   const specificYield =
     summary.recommendedPvKwp > 0
       ? summary.annualPvProductionKwh / summary.recommendedPvKwp
@@ -755,9 +891,14 @@ function ResultsPanel(props: {
       className: "bg-[#1f4d3a]",
     },
     {
-      label: "Carica/scarica batteria",
+      label: "Energia utile da batteria",
       value: summary.batterySelfConsumptionKwh,
       className: "bg-[#79a97d]",
+    },
+    {
+      label: "Perdite accumulo",
+      value: batteryLossesKwh,
+      className: "bg-[#b8c3b8]",
     },
     {
       label: "Immissione in rete",
@@ -821,8 +962,8 @@ function ResultsPanel(props: {
             <p className="mt-3 max-w-3xl text-sm leading-6 sm:text-base sm:leading-7 text-white/80">
               Il sistema ha generato il profilo dei consumi, simulato produzione
               fotovoltaica, carica/scarica della batteria e confronto con la rete.
-              Poi ha scelto la combinazione piÃ¹ coerente tra{" "}
-              {props.testedResults?.length ?? "piÃ¹"} scenari.
+              Poi ha scelto la combinazione più coerente tra{" "}
+              {props.testedResults?.length ?? "più"} scenari.
             </p>
           </div>
 
@@ -835,8 +976,8 @@ function ResultsPanel(props: {
             </div>
             <div className="mt-4 text-sm leading-6 text-white/70">
               <strong className="text-white">{props.pvDataSource?.label ?? "Produzione FV stimata"}</strong>
-              {props.pvDataSource?.provider ? ` Â· ${props.pvDataSource.provider}` : ""}
-              {props.pvDataSource?.note ? ` Â· ${props.pvDataSource.note}` : ""}
+              {props.pvDataSource?.provider ? ` · ${props.pvDataSource.provider}` : ""}
+              {props.pvDataSource?.note ? ` · ${props.pvDataSource.note}` : ""}
             </div>
             {props.pvDataSource?.latitude !== undefined &&
             props.pvDataSource.longitude !== undefined ? (
@@ -850,10 +991,10 @@ function ResultsPanel(props: {
               <div className="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-xs leading-5 text-white/70">
                 Consumi:{" "}
                 <strong className="text-white">{props.consumptionDataSource.label}</strong>
-                {" Â· "}
+                {" · "}
                 {formatKwh(props.consumptionDataSource.annualConsumptionKwh)} kWh/anno
                 {props.consumptionDataSource.fileName
-                  ? ` Â· ${props.consumptionDataSource.fileName}`
+                  ? ` · ${props.consumptionDataSource.fileName}`
                   : ""}
               </div>
             ) : null}
@@ -881,7 +1022,7 @@ function ResultsPanel(props: {
           <MetricCard
             label="Rientro investimento"
             value={formatYears(simplePaybackYears)}
-            detail={`Investimento stimato: ${formatEuro(estimatedInvestmentEur)}. Risparmio annuo stimato: ${formatEuro(annualEnergySavingsEur)}.`}
+            detail={`Investimento stimato: ${formatEuro(estimatedInvestmentEur)}. Beneficio operativo: ${formatEuro(annualEnergySavingsEur)}/anno + detrazioni se applicabili.`}
             tone="gold"
           />
 
@@ -921,14 +1062,14 @@ function ResultsPanel(props: {
           <StackedEnergyBar
             title="Copertura dei consumi domestici"
             total={summary.annualConsumptionKwh}
-            caption="Mostra da dove arriva lâ€™energia consumata dalla casa durante lâ€™anno."
+            caption="Mostra da dove arriva l’energia consumata dalla casa durante l’anno."
             segments={demandSegments}
           />
 
           <StackedEnergyBar
             title="Utilizzo della produzione fotovoltaica"
             total={summary.annualPvProductionKwh}
-            caption="Mostra come viene distribuita lâ€™energia prodotta dallâ€™impianto FV."
+            caption="Mostra come viene distribuita l’energia prodotta dall’impianto FV."
             segments={pvUseSegments}
           />
         </div>
@@ -938,7 +1079,7 @@ function ResultsPanel(props: {
             <h3 className="text-xl font-semibold sm:text-2xl">Lettura rapida</h3>
             <div className="mt-3 space-y-2 text-sm leading-6 text-[#52615d]">
               <p>
-                Lâ€™impianto consigliato copre{" "}
+                L’impianto consigliato copre{" "}
                 <strong className="text-[#1f4d3a]">
                   {formatPercent(summary.selfSufficiencyPercent)}%
                 </strong>{" "}
@@ -952,11 +1093,11 @@ function ResultsPanel(props: {
                 vengono utilizzati dalla casa tra uso diretto e batteria.
               </p>
               <p>
-                La resa specifica stimata Ã¨ circa{" "}
+                La resa specifica stimata è circa{" "}
                 <strong className="text-[#1f4d3a]">
                   {formatKwh(specificYield)} kWh/kWp
                 </strong>
-                . {props.pvDataSource?.source === "pvgis" ? "Questo dato deriva dalla serie oraria PVGIS scalata sulla taglia scelta." : "Questo dato sarÃ  piÃ¹ preciso quando saranno caricati consumi reali."}
+                . {props.pvDataSource?.source === "pvgis" ? "Questo dato deriva dalla serie oraria PVGIS scalata sulla taglia scelta." : "Questo dato sarÃ  più preciso quando saranno caricati consumi reali."}
               </p>
             </div>
           </article>
@@ -970,6 +1111,7 @@ function ResultsPanel(props: {
                 ["Produzione FV annua stimata", `${formatKwh(summary.annualPvProductionKwh)} kWh`],
                 ["Autoconsumo diretto", `${formatKwh(summary.directSelfConsumptionKwh)} kWh`],
                 ["Energia fornita dalla batteria", `${formatKwh(summary.batterySelfConsumptionKwh)} kWh`],
+                ["Perdite accumulo", `${formatKwh(batteryLossesKwh)} kWh`],
                 ["Prelievo dalla rete", `${formatKwh(summary.gridImportKwh)} kWh`],
                 ["Immissione in rete", `${formatKwh(summary.gridExportKwh)} kWh`],
                 ["Cicli equivalenti batteria", formatCycles(summary.equivalentBatteryCycles)],
@@ -1007,7 +1149,7 @@ function ResultsPanel(props: {
               </h3>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[#52615d]">
                 Il report include riepilogo tecnico, grafici mensili di consumi
-                e produzione FV, uso della rete, andamento dellâ€™accumulo,
+                e produzione FV, uso della rete, andamento dell’accumulo,
                 analisi automatica e limiti della stima preliminare.
               </p>
             </div>
@@ -1139,7 +1281,7 @@ function LocationSearchInput({
 
       if (!foundResults.length) {
         setSearchError(
-          "Nessuna localitÃ  trovata. Prova con cittÃ  + nazione, ad esempio â€œCagliari, Italiaâ€.",
+          "Nessuna localitÃ  trovata. Prova con cittÃ  + nazione, ad esempio “Cagliari, Italia”.",
         );
       }
     } catch (error) {
@@ -1199,7 +1341,7 @@ function LocationSearchInput({
 
       <p className="mt-3 text-sm leading-6 text-[#52615d]">
         Scrivi cittÃ  e nazione, poi scegli il risultato corretto. Esempi:
-        â€œCagliari, Italiaâ€, â€œUtsjoki, Finlandiaâ€, â€œMadrid, Spagnaâ€.
+        “Cagliari, Italia”, “Utsjoki, Finlandia”, “Madrid, Spagna”.
       </p>
 
       {selectedLocation ? (
@@ -1237,7 +1379,7 @@ function LocationSearchInput({
               </span>
               <span className="mt-1 block text-xs text-[#52615d]">
                 {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-                {location.isHighLatitude ? " Â· alta latitudine" : ""}
+                {location.isHighLatitude ? " · alta latitudine" : ""}
               </span>
             </button>
           ))}
@@ -1453,7 +1595,7 @@ export function SimulatorWizard() {
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#52615d]">
                   Inserisci i kWh annui e rispondi a un questionario: genereremo
-                  un profilo statistico piÃ¹ realistico di una media piatta.
+                  un profilo statistico più realistico di una media piatta.
                 </p>
               </div>
             </div>
@@ -1540,13 +1682,13 @@ export function SimulatorWizard() {
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">2. Accedi con SPID.</strong>
                             <br />
-                            Completa lâ€™autenticazione e accedi alla tua area privata.
+                            Completa l’autenticazione e accedi alla tua area privata.
                           </li>
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">3. Seleziona la fornitura elettrica.</strong>
                             <br />
                             Cerca la tua utenza luce, eventualmente riconoscendola dal POD o
-                            dallâ€™indirizzo di fornitura.
+                            dall’indirizzo di fornitura.
                           </li>
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">4. Vai su letture o consumi.</strong>
@@ -1557,7 +1699,7 @@ export function SimulatorWizard() {
                           <li className="rounded-2xl bg-white p-4">
                             <strong className="text-[#1f2933]">5. Scarica il file disponibile.</strong>
                             <br />
-                            Se trovi unâ€™esportazione CSV/TXT, scaricala e caricala qui nel simulatore.
+                            Se trovi un’esportazione CSV/TXT, scaricala e caricala qui nel simulatore.
                           </li>
                         </ol>
 
@@ -1580,7 +1722,7 @@ export function SimulatorWizard() {
                             <div className="text-2xl">ðŸ”</div>
                             <div className="mt-2 font-semibold text-[#1f2933]">Accesso SPID</div>
                             <p className="mt-1 text-sm leading-6 text-[#52615d]">
-                              Entra nellâ€™area privata del portale.
+                              Entra nell’area privata del portale.
                             </p>
                           </div>
                           <div className="rounded-2xl border border-[#e5ece7] p-4">
@@ -1600,8 +1742,8 @@ export function SimulatorWizard() {
                         </div>
 
                         <p className="mt-4 rounded-2xl bg-[#f7f4ec] p-4 text-xs leading-6 text-[#52615d]">
-                          Nota: il nome delle sezioni puÃ² cambiare leggermente nel tempo.
-                          Cerca voci come â€œlettureâ€, â€œconsumiâ€, â€œmisureâ€ o â€œstorico consumiâ€.
+                          Nota: il nome delle sezioni può cambiare leggermente nel tempo.
+                          Cerca voci come “letture”, “consumi”, “misure” o “storico consumi”.
                         </p>
                       </div>
                     </div>
@@ -1662,7 +1804,7 @@ export function SimulatorWizard() {
 
                   {uploadedFileSummary.selectedYear ? (
                     <div className="mt-4 rounded-2xl bg-white/70 p-4 text-sm leading-6 text-[#52615d]">
-                      Il sistema ha selezionato automaticamente il periodo piÃ¹ coerente
+                      Il sistema ha selezionato automaticamente il periodo più coerente
                       disponibile e ha completato eventuali dati mancanti per ottenere
                       un anno utile alla simulazione.
                     </div>
@@ -1827,7 +1969,7 @@ export function SimulatorWizard() {
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 sm:text-base sm:leading-7 text-white/80">
               Con i dati inseriti il sistema genera o usa un profilo annuale, simula FV e
-              accumulo, poi prova piÃ¹ combinazioni per avvicinarsi allâ€™obiettivo scelto.
+              accumulo, poi prova più combinazioni per avvicinarsi all’obiettivo scelto.
             </p>
           </div>
 
@@ -1863,4 +2005,5 @@ export function SimulatorWizard() {
     </div>
   );
 }
+
 

@@ -65,6 +65,8 @@ type ConsumptionDataSourceResponse = {
   note?: string;
 };
 
+
+
 function isValidSelectedLocation(
   location: SelectedGeocodedLocation | undefined,
 ): location is SelectedGeocodedLocation {
@@ -373,3 +375,4 @@ export async function POST(request: NextRequest) {
     reportSeries: createReportSeries(detailedSimulation.results),
   });
 }
+
